@@ -205,6 +205,8 @@ private:
 	struct map_projection_reference_s _ref_pos;
 	float _ref_alt;
 	hrt_abstime _ref_timestamp;
+	uint64_t _col_timestamp;
+	bool _collision;
 
 	bool _reset_pos_sp;
 	bool _reset_alt_sp;
@@ -325,7 +327,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_manual_thr_max(this, "MANTHR_MAX"),
 	_ref_alt(0.0f),
 	_ref_timestamp(0),
-
+	_col_timestamp(0),
+	_collision(false),
 	_reset_pos_sp(true),
 	_reset_alt_sp(true),
 	_mode_auto(false)
@@ -906,16 +909,36 @@ void MulticopterPositionControl::control_auto(float dt)
 		/* difference between current and desired position setpoints, 1 = max speed */
 		math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
 		float d_pos_m_len = d_pos_m.length();
-		bool no_collision = true;
+
+		// compute time since last seen obstacle
+		uint64_t new_col_timestamp = _collision_sensor.timestamp;
+		float dt_col = float(new_col_timestamp - _col_timestamp)/1.0e3f;
+
+		// check if obstacle currently seen
+		bool see_obstacle = false;
 		if (_collision_sensor.timestamp > 0) {
 			for (int i = 0; i < _collision_sensor.sensor_count; i++) {
 				if (_collision_sensor.collision_cm[i] < 200) {
-					no_collision = false;
+					see_obstacle = true;
+					_col_timestamp = new_col_timestamp;
 				}
 			}
 		}
-		
-		if (d_pos_m_len > dt && no_collision) {
+
+		// enable collision if obstacle seen
+		if (!_collision and see_obstacle) {
+			_collision = true;
+			mavlink_log_info(_mavlink_fd, "[mpc] collision mode enabled");
+		}
+
+		// disable flag collision if no obstacle seen for 5 seconds
+		if (_collision and  !see_obstacle and dt_col > 5) {
+			_collision = false;
+			mavlink_log_info(_mavlink_fd, "[mpc] collision mode disabled");
+		}
+
+		// don't move position set point
+		if (d_pos_m_len > dt && !_collision) {
 			pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
 		}
 
