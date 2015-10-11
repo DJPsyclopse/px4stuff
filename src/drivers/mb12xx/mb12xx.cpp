@@ -65,7 +65,9 @@
 #include <systemlib/err.h>
 
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_range_finder.h>
+#include <drivers/drv_sensor.h>
+#include <drivers/drv_orb_dev.h>
+#include <sys/ioctl.h>
 #include <drivers/device/ringbuffer.h>
 
 #include <uORB/uORB.h>
@@ -80,6 +82,7 @@
 #define MB12XX_MINADDR		81
 #define MB12XX_MAXADDR		0x70
 #define MB12XX_DEVICE_PATH	"/dev/mb12xx"
+#define MB12XX_MAX_COLLISION_SENSORS 	16 /* max 16 in mavlink message */
 
 /* MB12xx Registers addresses */
 
@@ -93,6 +96,8 @@
 
 #define MB12XX_CONVERSION_INTERVAL 	100000 /* 60ms for one sonar */
 #define TICKS_BETWEEN_SUCCESIVE_FIRES 	100000 /* 30ms between each sonar measurement (watch out for interference!) */
+
+#define COLLISION_DEVICE_PATH "/dev/collision"
 
 
 /* oddly, ERROR is not defined for c++ */
@@ -250,7 +255,7 @@ MB12XX::~MB12XX()
 	}
 
 	if (_class_instance != -1) {
-		unregister_class_devname(RANGE_FINDER_BASE_DEVICE_PATH, _class_instance);
+		unregister_class_devname(COLLISION_DEVICE_PATH, _class_instance);
 	}
 
 	/* free perf counters */
@@ -288,7 +293,7 @@ MB12XX::init()
 		goto out;
 	}
 
-	_class_instance = register_class_devname(RANGE_FINDER_BASE_DEVICE_PATH);
+	_class_instance = register_class_devname(COLLISION_DEVICE_PATH);
 	
 	if (_class_instance == CLASS_DEVICE_PRIMARY) {
 			/* get a publish handle on the range finder topic */
@@ -309,7 +314,7 @@ MB12XX::init()
 	/* check for connected rangefinders on each i2c port:
 	   We start from i2c base address (0x70 = 112) and count downwards
 	   So second iteration it uses i2c address 111, third iteration 110 and so on*/
-	for (unsigned counter = 0; counter <= MB12XX_MAX_RANGEFINDERS; counter++) {
+	for (unsigned counter = 0; counter <= MB12XX_MAX_COLLISION_SENSORS; counter++) {
 		_index_counter = MB12XX_BASEADDR - counter;	/* set temp sonar i2c address to base address - counter */
 		set_address(_index_counter);			/* set I2c port to temp sonar i2c address */
 		int ret2 = measure();
@@ -473,18 +478,6 @@ MB12XX::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case SENSORIOCRESET:
 		/* XXX implement this */
 		return -EINVAL;
-
-	case RANGEFINDERIOCSETMINIUMDISTANCE: {
-			set_minimum_distance(*(float *)arg);
-			return 0;
-		}
-		break;
-
-	case RANGEFINDERIOCSETMAXIUMDISTANCE: {
-			set_maximum_distance(*(float *)arg);
-			return 0;
-		}
-		break;
 
 	default:
 		/* give it to the superclass */
