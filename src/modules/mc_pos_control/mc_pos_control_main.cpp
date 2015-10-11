@@ -679,7 +679,9 @@ MulticopterPositionControl::control_manual(float dt)
 	_vel_ff = _sp_move_rate.emult(_params.vel_ff);
 
 	/* move position setpoint */
-	_pos_sp += _sp_move_rate * dt;
+	if (!_collision) {
+		_pos_sp += _sp_move_rate * dt;
+	}
 
 	/* check if position setpoint is too far from actual position */
 	math::Vector<3> pos_sp_offs;
@@ -910,34 +912,7 @@ void MulticopterPositionControl::control_auto(float dt)
 		math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
 		float d_pos_m_len = d_pos_m.length();
 
-		// compute time since last seen obstacle
-		uint64_t new_col_timestamp = _collision_sensor.timestamp;
-		float dt_col = float(new_col_timestamp - _col_timestamp)/1.0e3f;
-
-		// check if obstacle currently seen
-		bool see_obstacle = false;
-		if (_collision_sensor.timestamp > 0) {
-			for (int i = 0; i < _collision_sensor.sensor_count; i++) {
-				if (_collision_sensor.collision_cm[i] < 200) {
-					see_obstacle = true;
-					_col_timestamp = new_col_timestamp;
-				}
-			}
-		}
-
-		// enable collision if obstacle seen
-		if (!_collision and see_obstacle) {
-			_collision = true;
-			mavlink_log_info(_mavlink_fd, "[mpc] collision mode enabled");
-		}
-
-		// disable flag collision if no obstacle seen for 5 seconds
-		if (_collision and  !see_obstacle and dt_col > 5) {
-			_collision = false;
-			mavlink_log_info(_mavlink_fd, "[mpc] collision mode disabled");
-		}
-
-		// don't move position set point
+		/* don't move position set point if collision */
 		if (d_pos_m_len > dt && !_collision) {
 			pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
 		}
@@ -1042,6 +1017,33 @@ MulticopterPositionControl::task_main()
 				reset_yaw_sp = true;
 				_reset_alt_sp = true;
 			}
+		}
+
+		// compute time since last seen obstacle
+		uint64_t new_col_timestamp = _collision_sensor.timestamp;
+		float dt_col = float(new_col_timestamp - _col_timestamp)/1.0e3f;
+
+		// check if obstacle currently seen
+		bool see_obstacle = false;
+		if (_collision_sensor.timestamp > 0) {
+			for (int i = 0; i < _collision_sensor.sensor_count; i++) {
+				if (_collision_sensor.collision_cm[i] < 200) {
+					see_obstacle = true;
+					_col_timestamp = new_col_timestamp;
+				}
+			}
+		}
+
+		// enable collision if obstacle seen
+		if (!_collision and see_obstacle) {
+			_collision = true;
+			mavlink_log_info(_mavlink_fd, "[mpc] collision mode enabled");
+		}
+
+		// disable flag collision if no obstacle seen for 5 seconds
+		if (_collision and  !see_obstacle and dt_col > 5) {
+			_collision = false;
+			mavlink_log_info(_mavlink_fd, "[mpc] collision mode disabled");
 		}
 
 		//Update previous arming state
