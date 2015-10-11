@@ -265,3 +265,13 @@ PARAM_DEFINE_FLOAT(MPC_MAN_P_MAX, 35.0f);
  */
 PARAM_DEFINE_FLOAT(MPC_MAN_Y_MAX, 120.0f);
 
+/**
+ * Collision distance
+ *
+ * @unit m
+ * @min 1.0
+ * @max 5.0
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_COL_DIST, 2.5f);
+

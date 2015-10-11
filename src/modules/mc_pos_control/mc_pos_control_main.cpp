@@ -180,6 +180,7 @@ private:
 		param_t man_pitch_max;
 		param_t man_yaw_max;
 		param_t mc_att_yaw_p;
+		param_t col_dist;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -192,6 +193,7 @@ private:
 		float man_pitch_max;
 		float man_yaw_max;
 		float mc_att_yaw_p;
+		float col_dist;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -384,6 +386,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.man_pitch_max = param_find("MPC_MAN_P_MAX");
 	_params_handles.man_yaw_max = param_find("MPC_MAN_Y_MAX");
 	_params_handles.mc_att_yaw_p = param_find("MC_YAW_P");
+	_params_handles.col_dist = param_find("MPC_COL_DIST");
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -484,6 +487,8 @@ MulticopterPositionControl::parameters_update(bool force)
 		_params.man_yaw_max = math::radians(_params.man_yaw_max);
 		param_get(_params_handles.mc_att_yaw_p,&v);
 		_params.mc_att_yaw_p = v;
+		param_get(_params_handles.col_dist,&v);
+		_params.col_dist = v;
 	}
 
 	return OK;
@@ -678,7 +683,7 @@ MulticopterPositionControl::control_manual(float dt)
 	/* feed forward setpoint move rate with weight vel_ff */
 	_vel_ff = _sp_move_rate.emult(_params.vel_ff);
 
-	/* move position setpoint */
+	/* move position setpoint if no collision detected */
 	if (!_collision) {
 		_pos_sp += _sp_move_rate * dt;
 	}
@@ -1021,13 +1026,13 @@ MulticopterPositionControl::task_main()
 
 		// compute time since last seen obstacle
 		uint64_t new_col_timestamp = _collision_sensor.timestamp;
-		float dt_col = float(new_col_timestamp - _col_timestamp)/1.0e3f;
+		float dt_col = float(new_col_timestamp - _col_timestamp)/1.0e6f;
 
 		// check if obstacle currently seen
 		bool see_obstacle = false;
 		if (_collision_sensor.timestamp > 0) {
 			for (int i = 0; i < _collision_sensor.sensor_count; i++) {
-				if (_collision_sensor.collision_cm[i] < 200) {
+				if (_collision_sensor.collision_cm[i] < _params.col_dist) {
 					see_obstacle = true;
 					_col_timestamp = new_col_timestamp;
 				}
