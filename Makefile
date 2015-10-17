@@ -74,7 +74,13 @@ ifdef NINJA_BUILD
     PX4_MAKE = ninja
     PX4_MAKE_ARGS = 
 else
-    PX4_CMAKE_GENERATOR ?= "Unix Makefiles"
+
+ifdef SYSTEMROOT
+	# Windows
+	PX4_CMAKE_GENERATOR ?= "MSYS Makefiles"
+else
+	PX4_CMAKE_GENERATOR ?= "Unix Makefiles"
+endif
     PX4_MAKE = make
     PX4_MAKE_ARGS = -j$(j) --no-print-directory
 endif
@@ -83,7 +89,7 @@ endif
 # --------------------------------------------------------------------
 # describe how to build a cmake config
 define cmake-build
-+@if [ ! -e $(PWD)/build_$@/CMakeCache.txt ]; then mkdir -p $(PWD)/build_$@ && cd $(PWD)/build_$@ && cmake .. -G$(PX4_CMAKE_GENERATOR) -DCONFIG=$(1); fi
++@if [ ! -e $(PWD)/build_$@/CMakeCache.txt ]; then git submodule update --init --recursive --force && mkdir -p $(PWD)/build_$@ && cd $(PWD)/build_$@ && cmake .. -G$(PX4_CMAKE_GENERATOR) -DCONFIG=$(1); fi
 +$(PX4_MAKE) -C $(PWD)/build_$@ $(PX4_MAKE_ARGS) $(ARGS)
 endef
 
@@ -130,7 +136,10 @@ posix: posix_sitl_simple
 ros: ros_sitl_simple
 
 run_sitl_quad: posix
-	Tools/sitl_run.sh posix-configs/SITL/init/rcS
+	Tools/sitl_run.sh posix-configs/SITL/init/rcS none jmavsim
+
+run_sitl_iris: posix
+	Tools/sitl_run.sh posix-configs/SITL/init/rcS_iris_gazebo
 
 run_sitl_plane: posix
 	Tools/sitl_run.sh posix-configs/SITL/init/rc.fixed_wing
@@ -139,7 +148,7 @@ run_sitl_ros: posix
 	Tools/sitl_run.sh posix-configs/SITL/init/rc_iris_ros
 
 lldb_sitl_quad: posix
-	Tools/sitl_run.sh posix-configs/SITL/init/rcS lldb
+	Tools/sitl_run.sh posix-configs/SITL/init/rcS lldb jmavsim
 
 lldb_sitl_plane: posix
 	Tools/sitl_run.sh posix-configs/SITL/init/rc.fixed_wing lldb
@@ -148,7 +157,7 @@ lldb_sitl_ros: posix
 	Tools/sitl_run.sh posix-configs/SITL/init/rc_iris_ros lldb
 
 gdb_sitl_quad: posix
-	Tools/sitl_run.sh posix-configs/SITL/init/rcS gdb
+	Tools/sitl_run.sh posix-configs/SITL/init/rcS gdb jmavsim
 
 gdb_sitl_plane: posix
 	Tools/sitl_run.sh posix-configs/SITL/init/rc.fixed_wing lldb
@@ -172,14 +181,8 @@ check_format:
 
 clean:
 	@rm -rf build_*/
-
-distclean: clean
-	@cd NuttX
-	@git clean -d -f -x
-	@cd ..
-	@cd src/lib/uavcan
-	@git clean -d -f -x
-	@cd ../../..
+	@(cd NuttX && git clean -d -f -x)
+	@(cd src/modules/uavcan/libuavcan && git clean -d -f -x)
 
 # targets handled by cmake
 cmake_targets = test upload package package_source debug debug_tui debug_ddd debug_io debug_io_tui debug_io_ddd check_weak libuavcan
