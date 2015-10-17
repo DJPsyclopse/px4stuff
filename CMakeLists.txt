@@ -224,10 +224,11 @@ px4_add_git_submodule(TARGET git_genmsg PATH "Tools/genmsg")
 px4_add_git_submodule(TARGET git_gencpp PATH "Tools/gencpp")
 px4_add_git_submodule(TARGET git_mavlink PATH "mavlink/include/mavlink/v1.0")
 px4_add_git_submodule(TARGET git_gtest PATH "unittets/gtest")
-px4_add_git_submodule(TARGET git_uavcan PATH "src/lib/uavcan")
+px4_add_git_submodule(TARGET git_uavcan PATH "src/modules/uavcan/libuavcan")
 px4_add_git_submodule(TARGET git_eigen PATH "src/lib/eigen")
 px4_add_git_submodule(TARGET git_nuttx PATH "NuttX")
 px4_add_git_submodule(TARGET git_dspal PATH "src/lib/dspal")
+px4_add_git_submodule(TARGET git_jmavsim PATH "Tools/jMAVSim")
 
 add_custom_target(submodule_clean
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -274,7 +275,7 @@ px4_generate_messages(TARGET msg_gen
 px4_generate_parameters_xml(OUT parameters.xml BOARD ${BOARD})
 px4_generate_airframes_xml(OUT airframes.xml BOARD ${BOARD})
 add_custom_target(xml_gen
-	DEPENDS parameters.xml airframes.xml)
+	DEPENDS git_eigen parameters.xml airframes.xml)
 
 #=============================================================================
 # external projects
@@ -286,6 +287,9 @@ set_property(DIRECTORY PROPERTY EP_BASE ${ep_base})
 # add external project install folders to build
 link_directories(${ep_base}/Install/lib)
 include_directories(${ep_base}/Install/include)
+# add the directories so cmake won't warn
+execute_process(COMMAND cmake -E make_directory ${ep_base}/Install/lib)
+execute_process(COMMAND cmake -E make_directory ${ep_base}/Install/include)
 
 #=============================================================================
 # subdirectories
