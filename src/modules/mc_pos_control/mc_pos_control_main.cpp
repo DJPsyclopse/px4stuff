@@ -718,7 +718,10 @@ MulticopterPositionControl::control_manual(float dt)
 	if (_control_mode.flag_control_position_enabled)
 	{
 		/* check for pos. hold */
-		if (fabsf(req_vel_sp(0)) < _params.hold_xy_dz && fabsf(req_vel_sp(1)) < _params.hold_xy_dz)
+		if(_collision) {
+			_pos_hold_engaged = true;
+		}
+		else if(fabsf(req_vel_sp(0)) < _params.hold_xy_dz && fabsf(req_vel_sp(1)) < _params.hold_xy_dz)
 		{
 			if (!_pos_hold_engaged && (_params.hold_max_xy < FLT_EPSILON ||
 																 (fabsf(_vel(0)) < _params.hold_max_xy && fabsf(_vel(1)) < _params.hold_max_xy)))
@@ -1675,3 +1678,4 @@ int mc_pos_control_main(int argc, char *argv[])
 	warnx("unrecognized command");
 	return 1;
 }
+
