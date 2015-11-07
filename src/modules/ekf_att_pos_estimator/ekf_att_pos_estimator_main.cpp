@@ -65,8 +65,11 @@
 #include <systemlib/systemlib.h>
 #include <mathlib/mathlib.h>
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
+#include <matrix/math.hpp>
 #include <mavlink/mavlink_log.h>
 #include <platforms/px4_defines.h>
+
+using namespace matrix;
 
 static uint64_t IMUusec = 0;
 
@@ -804,9 +807,9 @@ void AttitudePositionEstimatorEKF::initializeGPS()
 void AttitudePositionEstimatorEKF::publishAttitude()
 {
 	// Output results
-	math::Quaternion q(_ekf->states[0], _ekf->states[1], _ekf->states[2], _ekf->states[3]);
-	math::Matrix<3, 3> R = q.to_dcm();
-	math::Vector<3> euler = R.to_euler();
+	Quatf q(_ekf->states[0], _ekf->states[1], _ekf->states[2], _ekf->states[3]);
+	Dcmf R(q);
+	Eulerf euler(R);
 
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -1089,7 +1092,7 @@ void AttitudePositionEstimatorEKF::updateSensorFusion(const bool fuseGPS, const 
 	// perform a covariance prediction if the total delta angle has exceeded the limit
 	// or the time limit will be exceeded at the next IMU update
 	if ((_covariancePredictionDt >= (_ekf->covTimeStepMax - _ekf->dtIMU))
-	    || (_ekf->summedDelAng.length() > _ekf->covDelAngMax)) {
+	    || (_ekf->summedDelAng.norm() > _ekf->covDelAngMax)) {
 		_ekf->CovariancePrediction(_covariancePredictionDt);
 		_ekf->summedDelAng.zero();
 		_ekf->summedDelVel.zero();
@@ -1216,9 +1219,9 @@ int AttitudePositionEstimatorEKF::start()
 
 void AttitudePositionEstimatorEKF::print_status()
 {
-	math::Quaternion q(_ekf->states[0], _ekf->states[1], _ekf->states[2], _ekf->states[3]);
-	math::Matrix<3, 3> R = q.to_dcm();
-	math::Vector<3> euler = R.to_euler();
+	Quatf q(_ekf->states[0], _ekf->states[1], _ekf->states[2], _ekf->states[3]);
+	Dcmf R(q);
+	Eulerf euler(R);
 
 	PX4_INFO("attitude: roll: %8.4f, pitch %8.4f, yaw: %8.4f degrees\n",
 	       (double)math::degrees(euler(0)), (double)math::degrees(euler(1)), (double)math::degrees(euler(2)));
@@ -1384,7 +1387,7 @@ void AttitudePositionEstimatorEKF::pollData()
 				_sensor_combined.magnetometer_ga[_mag_main * 3 + 2]);
 
 		/* fail over to the 2nd mag if we know the first is down */
-		if (mag.length() > 0.1f && (_last_mag != _sensor_combined.magnetometer_timestamp[_mag_main])) {
+		if (mag.norm() > 0.1f && (_last_mag != _sensor_combined.magnetometer_timestamp[_mag_main])) {
 			_ekf->magData.x = mag.x;
 			_ekf->magData.y = mag.y;
 			_ekf->magData.z = mag.z;

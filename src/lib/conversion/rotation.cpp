@@ -41,13 +41,13 @@
 #include "rotation.h"
 
 __EXPORT void
-get_rot_matrix(enum Rotation rot, math::Matrix<3, 3> *rot_matrix)
+get_rot_matrix(enum Rotation rot, Dcmf *rot_matrix)
 {
 	float roll  = M_DEG_TO_RAD_F * (float)rot_lookup[rot].roll;
 	float pitch = M_DEG_TO_RAD_F * (float)rot_lookup[rot].pitch;
 	float yaw   = M_DEG_TO_RAD_F * (float)rot_lookup[rot].yaw;
 
-	rot_matrix->from_euler(roll, pitch, yaw);
+	*rot_matrix = Dcmf(euler(roll, pitch, yaw));
 }
 
 #define HALF_SQRT_2 0.70710678118654757f

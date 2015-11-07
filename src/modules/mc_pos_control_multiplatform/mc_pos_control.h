@@ -56,7 +56,9 @@
 #include <mathlib/mathlib.h>
 #include <lib/geo/geo.h>
 // #include <mavlink/mavlink_log.h>
+#include <matrix/math.hpp>
 
+using namespace matrix;
 using namespace px4;
 
 class MulticopterPositionControlMultiplatform
@@ -144,13 +146,13 @@ protected:
 		float man_yaw_max;
 		float mc_att_yaw_p;
 
-		math::Vector<3> pos_p;
-		math::Vector<3> vel_p;
-		math::Vector<3> vel_i;
-		math::Vector<3> vel_d;
-		math::Vector<3> vel_ff;
-		math::Vector<3> vel_max;
-		math::Vector<3> sp_offs_max;
+		Vector3f pos_p;
+		Vector3f vel_p;
+		Vector3f vel_i;
+		Vector3f vel_d;
+		Vector3f vel_ff;
+		Vector3f vel_max;
+		Vector3f sp_offs_max;
 	}		_params;
 
 	struct map_projection_reference_s _ref_pos;
@@ -161,16 +163,16 @@ protected:
 	bool _reset_alt_sp;
 	bool _mode_auto;
 
-	math::Vector<3> _pos;
-	math::Vector<3> _pos_sp;
-	math::Vector<3> _vel;
-	math::Vector<3> _vel_sp;
-	math::Vector<3> _vel_prev;			/**< velocity on previous step */
-	math::Vector<3> _vel_ff;
-	math::Vector<3> _sp_move_rate;
+	Vector3f _pos;
+	Vector3f _pos_sp;
+	Vector3f _vel;
+	Vector3f _vel_sp;
+	Vector3f _vel_prev;			/**< velocity on previous step */
+	Vector3f _vel_ff;
+	Vector3f _sp_move_rate;
 
-	math::Vector<3> _thrust_int;
-	math::Matrix<3, 3> _R;
+	Vector3f _thrust_int;
+	Dcmf _R;
 
 	/**
 	 * Update our local parameter cache.
@@ -213,8 +215,8 @@ protected:
 	 */
 	void		control_offboard(float dt);
 
-	bool		cross_sphere_line(const math::Vector<3>& sphere_c, float sphere_r,
-					const math::Vector<3> line_a, const math::Vector<3> line_b, math::Vector<3>& res);
+	bool		cross_sphere_line(const Vector3f& sphere_c, float sphere_r,
+					const Vector3f line_a, const Vector3f line_b, Vector3f& res);
 
 	/**
 	 * Set position setpoint for AUTO

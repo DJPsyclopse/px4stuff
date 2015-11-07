@@ -60,9 +60,11 @@
 #ifndef ECL_L1_POS_CONTROLLER_H
 #define ECL_L1_POS_CONTROLLER_H
 
-#include <mathlib/mathlib.h>
+#include <matrix/math.hpp>
 #include <geo/geo.h>
 #include <ecl/ecl.h>
+
+using namespace matrix;
 
 /**
  * L1 Nonlinear Guidance Logic
@@ -160,8 +162,8 @@ public:
 	 *
 	 * @return sets _lateral_accel setpoint
 	 */
-	void navigate_waypoints(const math::Vector<2> &vector_A, const math::Vector<2> &vector_B, const math::Vector<2> &vector_curr_position,
-			   const math::Vector<2> &ground_speed);
+	void navigate_waypoints(const Vector<float, 2> &vector_A, const Vector<float, 2> &vector_B, const Vector<float, 2> &vector_curr_position,
+			   const Vector<float, 2> &ground_speed);
 
 
 	/**
@@ -172,8 +174,8 @@ public:
 	 *
 	 * @return sets _lateral_accel setpoint
 	 */
-	void navigate_loiter(const math::Vector<2> &vector_A, const math::Vector<2> &vector_curr_position, float radius, int8_t loiter_direction,
-			   const math::Vector<2> &ground_speed_vector);
+	void navigate_loiter(const Vector<float, 2> &vector_A, const Vector<float, 2> &vector_curr_position, float radius, int8_t loiter_direction,
+			   const Vector<float, 2> &ground_speed_vector);
 
 
 	/**
@@ -185,7 +187,7 @@ public:
 	 *
 	 * @return sets _lateral_accel setpoint
 	 */
-	void navigate_heading(float navigation_heading, float current_heading, const math::Vector<2> &ground_speed);
+	void navigate_heading(float navigation_heading, float current_heading, const Vector<float, 2> &ground_speed);
 
 
 	/**
@@ -260,7 +262,7 @@ private:
 	 * @param wp The point to convert to into the local coordinates, in WGS84 coordinates
 	 * @return The vector in meters pointing from the reference position to the coordinates
 	 */
-	math::Vector<2> get_local_planar_vector(const math::Vector<2> &origin, const math::Vector<2> &target) const;
+	Vector<float, 2> get_local_planar_vector(const Vector<float, 2> &origin, const Vector<float, 2> &target) const;
 
 };
 

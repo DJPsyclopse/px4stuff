@@ -39,6 +39,7 @@
  */
 
 #include <float.h>
+#include <mathlib/mathlib.h>
 
 #include "ecl_l1_pos_controller.h"
 
@@ -85,8 +86,8 @@ float ECL_L1_Pos_Controller::crosstrack_error(void)
 	return _crosstrack_error;
 }
 
-void ECL_L1_Pos_Controller::navigate_waypoints(const math::Vector<2> &vector_A, const math::Vector<2> &vector_B, const math::Vector<2> &vector_curr_position,
-				       const math::Vector<2> &ground_speed_vector)
+void ECL_L1_Pos_Controller::navigate_waypoints(const Vector<float, 2> &vector_A, const Vector<float, 2> &vector_B, const Vector<float, 2> &vector_curr_position,
+				       const Vector<float, 2> &ground_speed_vector)
 {
 
 	/* this follows the logic presented in [1] */
@@ -99,40 +100,40 @@ void ECL_L1_Pos_Controller::navigate_waypoints(const math::Vector<2> &vector_A, 
 	_target_bearing = get_bearing_to_next_waypoint(vector_curr_position(0), vector_curr_position(1), vector_B(0), vector_B(1));
 
 	/* enforce a minimum ground speed of 0.1 m/s to avoid singularities */
-	float ground_speed = math::max(ground_speed_vector.length(), 0.1f);
+	float ground_speed = math::max(ground_speed_vector.norm(), 0.1f);
 
 	/* calculate the L1 length required for the desired period */
 	_L1_distance = _L1_ratio * ground_speed;
 
 	/* calculate vector from A to B */
-	math::Vector<2> vector_AB = get_local_planar_vector(vector_A, vector_B);
+	Vector<float, 2> vector_AB = get_local_planar_vector(vector_A, vector_B);
 
 	/*
 	 * check if waypoints are on top of each other. If yes,
 	 * skip A and directly continue to B
 	 */
-	if (vector_AB.length() < 1.0e-6f) {
+	if (vector_AB.norm() < 1.0e-6f) {
 		vector_AB = get_local_planar_vector(vector_curr_position, vector_B);
 	}
 
 	vector_AB.normalize();
 
 	/* calculate the vector from waypoint A to the aircraft */
-	math::Vector<2> vector_A_to_airplane = get_local_planar_vector(vector_A, vector_curr_position);
+	Vector<float, 2> vector_A_to_airplane = get_local_planar_vector(vector_A, vector_curr_position);
 
 	/* calculate crosstrack error (output only) */
-	_crosstrack_error = vector_AB % vector_A_to_airplane;
+	_crosstrack_error = vector_AB.cross(vector_A_to_airplane);
 
 	/*
 	 * If the current position is in a +-135 degree angle behind waypoint A
 	 * and further away from A than the L1 distance, then A becomes the L1 point.
 	 * If the aircraft is already between A and B normal L1 logic is applied.
 	 */
-	float distance_A_to_airplane = vector_A_to_airplane.length();
+	float distance_A_to_airplane = vector_A_to_airplane.norm();
 	float alongTrackDist = vector_A_to_airplane * vector_AB;
 
 	/* estimate airplane position WRT to B */
-	math::Vector<2> vector_B_to_P_unit = get_local_planar_vector(vector_B, vector_curr_position).normalized();
+	Vector<float, 2> vector_B_to_P_unit = get_local_planar_vector(vector_B, vector_curr_position).normalized();
 	
 	/* calculate angle of airplane position vector relative to line) */
 
@@ -145,7 +146,7 @@ void ECL_L1_Pos_Controller::navigate_waypoints(const math::Vector<2> &vector_A, 
 		/* calculate eta to fly to waypoint A */
 
 		/* unit vector from waypoint A to current position */
-		math::Vector<2> vector_A_to_airplane_unit = vector_A_to_airplane.normalized();
+		Vector<float, 2> vector_A_to_airplane_unit = vector_A_to_airplane.normalized();
 		/* velocity across / orthogonal to line */
 		xtrack_vel = ground_speed_vector % (-vector_A_to_airplane_unit);
 		/* velocity along line */
@@ -211,8 +212,8 @@ void ECL_L1_Pos_Controller::navigate_waypoints(const math::Vector<2> &vector_A, 
 	_bearing_error = eta;
 }
 
-void ECL_L1_Pos_Controller::navigate_loiter(const math::Vector<2> &vector_A, const math::Vector<2> &vector_curr_position, float radius, int8_t loiter_direction,
-				       const math::Vector<2> &ground_speed_vector)
+void ECL_L1_Pos_Controller::navigate_loiter(const Vector<float, 2> &vector_A, const Vector<float, 2> &vector_curr_position, float radius, int8_t loiter_direction,
+				       const Vector<float, 2> &ground_speed_vector)
 {
 	/* the complete guidance logic in this section was proposed by [2] */
 
@@ -225,18 +226,18 @@ void ECL_L1_Pos_Controller::navigate_loiter(const math::Vector<2> &vector_A, con
 	_target_bearing = get_bearing_to_next_waypoint(vector_curr_position(0), vector_curr_position(1), vector_A(0), vector_A(1));
 
 	/* ground speed, enforce minimum of 0.1 m/s to avoid singularities */
-	float ground_speed = math::max(ground_speed_vector.length() , 0.1f);
+	float ground_speed = math::max(ground_speed_vector.norm() , 0.1f);
 
 	/* calculate the L1 length required for the desired period */
 	_L1_distance = _L1_ratio * ground_speed;
 
 	/* calculate the vector from waypoint A to current position */
-	math::Vector<2> vector_A_to_airplane = get_local_planar_vector(vector_A, vector_curr_position);
+	Vector<float, 2> vector_A_to_airplane = get_local_planar_vector(vector_A, vector_curr_position);
 
-	math::Vector<2> vector_A_to_airplane_unit;
+	Vector<float, 2> vector_A_to_airplane_unit;
 
 	/* prevent NaN when normalizing */
-	if (vector_A_to_airplane.length() > FLT_EPSILON) {
+	if (vector_A_to_airplane.norm() > FLT_EPSILON) {
 		/* store the normalized vector from waypoint A to current position */
 		vector_A_to_airplane_unit = vector_A_to_airplane.normalized();
 	} else {
@@ -261,7 +262,7 @@ void ECL_L1_Pos_Controller::navigate_loiter(const math::Vector<2> &vector_A, con
 	/* radial velocity error */
 	float xtrack_vel_circle = -ltrack_vel_center;
 	/* radial distance from the loiter circle (not center) */
-	float xtrack_err_circle = vector_A_to_airplane.length() - radius;
+	float xtrack_err_circle = vector_A_to_airplane.norm() - radius;
 
 	/* cross track error for feedback */
 	_crosstrack_error = xtrack_err_circle;
@@ -308,7 +309,7 @@ void ECL_L1_Pos_Controller::navigate_loiter(const math::Vector<2> &vector_A, con
 }
 
 
-void ECL_L1_Pos_Controller::navigate_heading(float navigation_heading, float current_heading, const math::Vector<2> &ground_speed_vector)
+void ECL_L1_Pos_Controller::navigate_heading(float navigation_heading, float current_heading, const Vector<float, 2> &ground_speed_vector)
 {
 	/* the complete guidance logic in this section was proposed by [2] */
 
@@ -327,7 +328,7 @@ void ECL_L1_Pos_Controller::navigate_heading(float navigation_heading, float cur
 	_bearing_error = eta; 
 
 	/* ground speed is the length of the ground speed vector */
-	float ground_speed = ground_speed_vector.length();
+	float ground_speed = ground_speed_vector.norm();
 
 	/* adjust L1 distance to keep constant frequency */
 	_L1_distance = ground_speed / _heading_omega;
@@ -361,11 +362,11 @@ void ECL_L1_Pos_Controller::navigate_level_flight(float current_heading)
 }
 
 
-math::Vector<2> ECL_L1_Pos_Controller::get_local_planar_vector(const math::Vector<2> &origin, const math::Vector<2> &target) const
+Vector<float, 2> ECL_L1_Pos_Controller::get_local_planar_vector(const Vector<float, 2> &origin, const Vector<float, 2> &target) const
 {
 	/* this is an approximation for small angles, proposed by [2] */
 
-	math::Vector<2> out(math::radians((target(0) - origin(0))), math::radians((target(1) - origin(1))*cosf(math::radians(origin(0)))));
+	Vector<float, 2> out(math::radians((target(0) - origin(0))), math::radians((target(1) - origin(1))*cosf(math::radians(origin(0)))));
 
 	return out * static_cast<float>(CONSTANTS_RADIUS_OF_EARTH);
 }

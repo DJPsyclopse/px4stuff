@@ -41,7 +41,10 @@
 
 #pragma once
 
-#include <mathlib/mathlib.h>
+#include <inttypes.h>
+#include <matrix/math.hpp>
+
+using namespace matrix;
 
 class Integrator
 {
@@ -58,14 +61,14 @@ public:
 	 * @return		true if putting the item triggered an integral reset
 	 *			and the integral should be published
 	 */
-	bool			put(uint64_t timestamp, math::Vector<3> &val, math::Vector<3> &integral, uint64_t &integral_dt);
+	bool			put(uint64_t timestamp, Vector3f &val, Vector3f &integral, uint64_t &integral_dt);
 
 	/**
 	 * Get the current integral value
 	 *
 	 * @return		the integral since the last auto-reset
 	 */
-	math::Vector<3>		get() { return _integral_auto; }
+	Vector3f		get() { return _integral_auto; }
 
 	/**
 	 * Read from the integral
@@ -73,7 +76,7 @@ public:
 	 * @param auto_reset	Reset the integral to zero on read
 	 * @return		the integral since the last read-reset
 	 */
-	math::Vector<3>		read(bool auto_reset);
+	Vector3f		read(bool auto_reset);
 
 	/**
 	 * Get current integral start time
@@ -84,11 +87,11 @@ private:
 	uint64_t _auto_reset_interval;		/**< the interval after which the content will be published and the integrator reset */
 	uint64_t _last_integration;			/**< timestamp of the last integration step */
 	uint64_t _last_auto;				/**< last auto-announcement of integral value */
-	math::Vector<3> _integral_auto;			/**< the integrated value which auto-resets after _auto_reset_interval */
-	math::Vector<3> _integral_read;			/**< the integrated value since the last read */
-	math::Vector<3> _last_val;			/**< previously integrated last value */
-	math::Vector<3> _last_delta;			/**< last local delta */
-	void (*_auto_callback)(uint64_t, math::Vector<3>);	/**< the function callback for auto-reset */
+	Vector3f _integral_auto;			/**< the integrated value which auto-resets after _auto_reset_interval */
+	Vector3f _integral_read;			/**< the integrated value since the last read */
+	Vector3f _last_val;			/**< previously integrated last value */
+	Vector3f _last_delta;			/**< last local delta */
+	void (*_auto_callback)(uint64_t, Vector3f);	/**< the function callback for auto-reset */
 	bool _coning_comp_on;				/**< coning compensation */
 
 	/* we don't want this class to be copied */

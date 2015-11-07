@@ -257,7 +257,7 @@ MulticopterPositionControlMultiplatform::reset_alt_sp()
 void
 MulticopterPositionControlMultiplatform::limit_pos_sp_offset()
 {
-	math::Vector<3> pos_sp_offs;
+	Vector3f pos_sp_offs;
 	pos_sp_offs.zero();
 
 	if (_control_mode->data().flag_control_position_enabled) {
@@ -322,7 +322,7 @@ MulticopterPositionControlMultiplatform::control_manual(float dt)
 	_pos_sp += _sp_move_rate * dt;
 
 	/* check if position setpoint is too far from actual position */
-	math::Vector<3> pos_sp_offs;
+	Vector3f pos_sp_offs;
 	pos_sp_offs.zero();
 
 	if (_control_mode->data().flag_control_position_enabled) {
@@ -390,14 +390,14 @@ MulticopterPositionControlMultiplatform::control_offboard(float dt)
 }
 
 bool
-MulticopterPositionControlMultiplatform::cross_sphere_line(const math::Vector<3>& sphere_c, float sphere_r,
-		const math::Vector<3> line_a, const math::Vector<3> line_b, math::Vector<3>& res)
+MulticopterPositionControlMultiplatform::cross_sphere_line(const Vector3f& sphere_c, float sphere_r,
+		const Vector3f line_a, const Vector3f line_b, Vector3f& res)
 {
 	/* project center of sphere on line */
 	/* normalized AB */
-	math::Vector<3> ab_norm = line_b - line_a;
+	Vector3f ab_norm = line_b - line_a;
 	ab_norm.normalize();
-	math::Vector<3> d = line_a + ab_norm * ((sphere_c - line_a) * ab_norm);
+	Vector3f d = line_a + ab_norm * ((sphere_c - line_a) * ab_norm);
 	float cd_len = (sphere_c - d).length();
 
 	/* we have triangle CDX with known CD and CX = R, find DX */
@@ -430,24 +430,24 @@ MulticopterPositionControlMultiplatform::control_auto(float dt)
 		_reset_alt_sp = true;
 
 		/* project setpoint to local frame */
-		math::Vector<3> curr_sp;
+		Vector3f curr_sp;
 		map_projection_project(&_ref_pos,
 				       _pos_sp_triplet->data().current.lat, _pos_sp_triplet->data().current.lon,
 				       &curr_sp.data[0], &curr_sp.data[1]);
 		curr_sp(2) = -(_pos_sp_triplet->data().current.alt - _ref_alt);
 
 		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-		math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+		Vector3f scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
 
 		/* convert current setpoint to scaled space */
-		math::Vector<3> curr_sp_s = curr_sp.emult(scale);
+		Vector3f curr_sp_s = curr_sp.emult(scale);
 
 		/* by default use current setpoint as is */
-		math::Vector<3> pos_sp_s = curr_sp_s;
+		Vector3f pos_sp_s = curr_sp_s;
 
 		if (_pos_sp_triplet->data().current.type == _pos_sp_triplet->data().current.SETPOINT_TYPE_POSITION && _pos_sp_triplet->data().previous.valid) {
 			/* follow "previous - current" line */
-			math::Vector<3> prev_sp;
+			Vector3f prev_sp;
 			map_projection_project(&_ref_pos,
 						   _pos_sp_triplet->data().previous.lat, _pos_sp_triplet->data().previous.lon,
 						   &prev_sp.data[0], &prev_sp.data[1]);
@@ -456,27 +456,27 @@ MulticopterPositionControlMultiplatform::control_auto(float dt)
 			if ((curr_sp - prev_sp).length() > MIN_DIST) {
 
 				/* find X - cross point of L1 sphere and trajectory */
-				math::Vector<3> pos_s = _pos.emult(scale);
-				math::Vector<3> prev_sp_s = prev_sp.emult(scale);
-				math::Vector<3> prev_curr_s = curr_sp_s - prev_sp_s;
-				math::Vector<3> curr_pos_s = pos_s - curr_sp_s;
+				Vector3f pos_s = _pos.emult(scale);
+				Vector3f prev_sp_s = prev_sp.emult(scale);
+				Vector3f prev_curr_s = curr_sp_s - prev_sp_s;
+				Vector3f curr_pos_s = pos_s - curr_sp_s;
 				float curr_pos_s_len = curr_pos_s.length();
 				if (curr_pos_s_len < 1.0f) {
 					/* copter is closer to waypoint than L1 radius */
 					/* check next waypoint and use it to avoid slowing down when passing via waypoint */
 					if (_pos_sp_triplet->data().next.valid) {
-						math::Vector<3> next_sp;
+						Vector3f next_sp;
 						map_projection_project(&_ref_pos,
 									   _pos_sp_triplet->data().next.lat, _pos_sp_triplet->data().next.lon,
 									   &next_sp.data[0], &next_sp.data[1]);
 						next_sp(2) = -(_pos_sp_triplet->data().next.alt - _ref_alt);
 
 						if ((next_sp - curr_sp).length() > MIN_DIST) {
-							math::Vector<3> next_sp_s = next_sp.emult(scale);
+							Vector3f next_sp_s = next_sp.emult(scale);
 
 							/* calculate angle prev - curr - next */
-							math::Vector<3> curr_next_s = next_sp_s - curr_sp_s;
-							math::Vector<3> prev_curr_s_norm = prev_curr_s.normalized();
+							Vector3f curr_next_s = next_sp_s - curr_sp_s;
+							Vector3f prev_curr_s_norm = prev_curr_s.normalized();
 
 							/* cos(a) * curr_next, a = angle between current and next trajectory segments */
 							float cos_a_curr_next = prev_curr_s_norm * curr_next_s;
@@ -492,7 +492,7 @@ MulticopterPositionControlMultiplatform::control_auto(float dt)
 								}
 
 								/* feed forward position setpoint offset */
-								math::Vector<3> pos_ff = prev_curr_s_norm *
+								Vector3f pos_ff = prev_curr_s_norm *
 										cos_a_curr_next * cos_b * cos_b * (1.0f - curr_pos_s_len) *
 										(1.0f - expf(-curr_pos_s_len * curr_pos_s_len * 20.0f));
 								pos_sp_s += pos_ff;
@@ -524,10 +524,10 @@ MulticopterPositionControlMultiplatform::control_auto(float dt)
 		}
 
 		/* move setpoint not faster than max allowed speed */
-		math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+		Vector3f pos_sp_old_s = _pos_sp.emult(scale);
 
 		/* difference between current and desired position setpoints, 1 = max speed */
-		math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+		Vector3f d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
 		float d_pos_m_len = d_pos_m.length();
 		if (d_pos_m_len > dt) {
 			pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
@@ -643,7 +643,7 @@ void  MulticopterPositionControlMultiplatform::handle_vehicle_attitude(const px4
 
 		} else {
 			/* run position & altitude controllers, calculate velocity setpoint */
-			math::Vector<3> pos_err = _pos_sp - _pos;
+			Vector3f pos_err = _pos_sp - _pos;
 
 			_vel_sp = pos_err.emult(_params.pos_p) + _vel_ff;
 
@@ -727,14 +727,14 @@ void  MulticopterPositionControlMultiplatform::handle_vehicle_attitude(const px4
 				}
 
 				/* velocity error */
-				math::Vector<3> vel_err = _vel_sp - _vel;
+				Vector3f vel_err = _vel_sp - _vel;
 
 				/* derivative of velocity error, not includes setpoint acceleration */
-				math::Vector<3> vel_err_d = (_sp_move_rate - _vel).emult(_params.pos_p) - (_vel - _vel_prev) / dt;
+				Vector3f vel_err_d = (_sp_move_rate - _vel).emult(_params.pos_p) - (_vel - _vel_prev) / dt;
 				_vel_prev = _vel;
 
 				/* thrust vector in NED frame */
-				math::Vector<3> thrust_sp = vel_err.emult(_params.vel_p) + vel_err_d.emult(_params.vel_d) + _thrust_int;
+				Vector3f thrust_sp = vel_err.emult(_params.vel_p) + vel_err_d.emult(_params.vel_d) + _thrust_int;
 
 				if (!_control_mode->data().flag_control_velocity_enabled) {
 					thrust_sp(0) = 0.0f;
@@ -866,9 +866,9 @@ void  MulticopterPositionControlMultiplatform::handle_vehicle_attitude(const px4
 				/* calculate attitude setpoint from thrust vector */
 				if (_control_mode->data().flag_control_velocity_enabled) {
 					/* desired body_z axis = -normalize(thrust_vector) */
-					math::Vector<3> body_x;
-					math::Vector<3> body_y;
-					math::Vector<3> body_z;
+					Vector3f body_x;
+					Vector3f body_y;
+					Vector3f body_z;
 
 					if (thrust_abs > SIGMA) {
 						body_z = -thrust_sp / thrust_abs;
@@ -880,7 +880,7 @@ void  MulticopterPositionControlMultiplatform::handle_vehicle_attitude(const px4
 					}
 
 					/* vector of desired yaw direction in XY plane, rotated by PI/2 */
-					math::Vector<3> y_C(-sinf(_att_sp_msg.data().yaw_body), cosf(_att_sp_msg.data().yaw_body), 0.0f);
+					Vector3f y_C(-sinf(_att_sp_msg.data().yaw_body), cosf(_att_sp_msg.data().yaw_body), 0.0f);
 
 					if (fabsf(body_z(2)) > SIGMA) {
 						/* desired body_x axis, orthogonal to body_z */
@@ -915,7 +915,7 @@ void  MulticopterPositionControlMultiplatform::handle_vehicle_attitude(const px4
 					_att_sp_msg.data().R_valid = true;
 
 					/* calculate euler angles, for logging only, must not be used for control */
-					math::Vector<3> euler = _R.to_euler();
+					Vector3f euler = _R.to_euler();
 					_att_sp_msg.data().roll_body = euler(0);
 					_att_sp_msg.data().pitch_body = euler(1);
 					/* yaw already used to construct rot matrix, but actual rotation matrix can have different yaw near singularity */

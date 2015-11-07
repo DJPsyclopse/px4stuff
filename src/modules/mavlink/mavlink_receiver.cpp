@@ -67,7 +67,7 @@
 #include <stdlib.h>
 #include <poll.h>
 
-#include <mathlib/mathlib.h>
+#include <matrix/math.hpp>
 
 #include <conversion/rotation.h>
 
@@ -837,8 +837,7 @@ MavlinkReceiver::handle_message_vision_position_estimate(mavlink_message_t *msg)
 	vision_position.vy = 0.0f;
 	vision_position.vz = 0.0f;
 
-	math::Quaternion q;
-	q.from_euler(pos.roll, pos.pitch, pos.yaw);
+	Quatf q(Eulerf(pos.roll, pos.pitch, pos.yaw));
 
 	vision_position.q[0] = q(0);
 	vision_position.q[1] = q(1);
@@ -1591,12 +1590,12 @@ MavlinkReceiver::handle_message_hil_state_quaternion(mavlink_message_t *msg)
 	struct vehicle_attitude_s hil_attitude;
 	{
 		memset(&hil_attitude, 0, sizeof(hil_attitude));
-		math::Quaternion q(hil_state.attitude_quaternion);
-		math::Matrix<3, 3> C_nb = q.to_dcm();
-		math::Vector<3> euler = C_nb.to_euler();
+		Quatf q(hil_state.attitude_quaternion);
+		Dcmf C_nb(q);
+		Eulerf euler(C_nb);
 
 		hil_attitude.timestamp = timestamp;
-		memcpy(hil_attitude.R, C_nb.data, sizeof(hil_attitude.R));
+		memcpy(hil_attitude.R, C_nb.data(), sizeof(hil_attitude.R));
 		hil_attitude.R_valid = true;
 
 		hil_attitude.q[0] = q(0);

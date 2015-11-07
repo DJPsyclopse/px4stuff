@@ -63,6 +63,9 @@
 #include <errno.h>
 #include <math.h>
 #include <mathlib/mathlib.h>
+#include <matrix/math.hpp>
+
+using namespace matrix;
 
 #include <px4_adc.h>
 //#include <nuttx/analog/adc.h>
@@ -239,8 +242,8 @@ private:
 	struct rc_parameter_map_s _rc_parameter_map;
 	float _param_rc_values[rc_parameter_map_s::RC_PARAM_MAP_NCHAN];	/**< parameter values for RC control */
 
-	math::Matrix<3, 3>	_board_rotation;	/**< rotation matrix for the orientation that the board is mounted */
-	math::Matrix<3, 3>	_mag_rotation[3];	/**< rotation matrix for the orientation that the external mag0 is mounted */
+	Dcmf	_board_rotation;	/**< rotation matrix for the orientation that the board is mounted */
+	Dcmf	_mag_rotation[3];	/**< rotation matrix for the orientation that the external mag0 is mounted */
 
 	uint64_t _battery_discharged;			/**< battery discharged current in mA*ms */
 	hrt_abstime _battery_current_timestamp;		/**< timestamp of last battery current reading */
@@ -889,7 +892,7 @@ Sensors::parameters_update()
 	param_get(_parameter_handles.board_offset[2], &(_parameters.board_offset[2]));
 
 	/** fine tune board offset on parameter update **/
-	math::Matrix<3, 3> board_rotation_offset;
+	Dcmf board_rotation_offset;
 	board_rotation_offset.from_euler(M_DEG_TO_RAD_F * _parameters.board_offset[0],
 					 M_DEG_TO_RAD_F * _parameters.board_offset[1],
 					 M_DEG_TO_RAD_F * _parameters.board_offset[2]);
@@ -1056,14 +1059,14 @@ Sensors::accel_poll(struct sensor_combined_s &raw)
 
 			orb_copy(ORB_ID(sensor_accel), _accel_sub[i], &accel_report);
 
-			math::Vector<3> vect(accel_report.x, accel_report.y, accel_report.z);
+			Vector3f vect(accel_report.x, accel_report.y, accel_report.z);
 			vect = _board_rotation * vect;
 
 			raw.accelerometer_m_s2[i * 3 + 0] = vect(0);
 			raw.accelerometer_m_s2[i * 3 + 1] = vect(1);
 			raw.accelerometer_m_s2[i * 3 + 2] = vect(2);
 
-			math::Vector<3> vect_int(accel_report.x_integral, accel_report.y_integral, accel_report.z_integral);
+			Vector3f vect_int(accel_report.x_integral, accel_report.y_integral, accel_report.z_integral);
 			vect_int = _board_rotation * vect_int;
 
 			raw.accelerometer_integral_m_s[i * 3 + 0] = vect_int(0);
@@ -1095,14 +1098,14 @@ Sensors::gyro_poll(struct sensor_combined_s &raw)
 
 			orb_copy(ORB_ID(sensor_gyro), _gyro_sub[i], &gyro_report);
 
-			math::Vector<3> vect(gyro_report.x, gyro_report.y, gyro_report.z);
+			Vector3f vect(gyro_report.x, gyro_report.y, gyro_report.z);
 			vect = _board_rotation * vect;
 
 			raw.gyro_rad_s[i * 3 + 0] = vect(0);
 			raw.gyro_rad_s[i * 3 + 1] = vect(1);
 			raw.gyro_rad_s[i * 3 + 2] = vect(2);
 
-			math::Vector<3> vect_int(gyro_report.x_integral, gyro_report.y_integral, gyro_report.z_integral);
+			Vector3f vect_int(gyro_report.x_integral, gyro_report.y_integral, gyro_report.z_integral);
 			vect_int = _board_rotation * vect_int;
 
 			raw.gyro_integral_rad[i * 3 + 0] = vect_int(0);
@@ -1139,7 +1142,7 @@ Sensors::mag_poll(struct sensor_combined_s &raw)
 
 			orb_copy(ORB_ID(sensor_mag), _mag_sub[i], &mag_report);
 
-			math::Vector<3> vect(mag_report.x, mag_report.y, mag_report.z);
+			Vector3f vect(mag_report.x, mag_report.y, mag_report.z);
 
 			vect = _mag_rotation[i] * vect;
 

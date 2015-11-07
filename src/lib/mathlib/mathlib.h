@@ -41,9 +41,6 @@
 
 #pragma once
 
-#include "math/Vector.hpp"
-#include "math/Matrix.hpp"
-#include "math/Quaternion.hpp"
 #include "math/Limits.hpp"
 
 #endif

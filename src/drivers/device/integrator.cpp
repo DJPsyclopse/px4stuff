@@ -61,7 +61,7 @@ Integrator::~Integrator()
 }
 
 bool
-Integrator::put(uint64_t timestamp, math::Vector<3> &val, math::Vector<3> &integral, uint64_t &integral_dt)
+Integrator::put(uint64_t timestamp, Vector3f &val, Vector3f &integral, uint64_t &integral_dt)
 {
 	bool auto_reset = false;
 
@@ -75,7 +75,7 @@ Integrator::put(uint64_t timestamp, math::Vector<3> &val, math::Vector<3> &integ
 
 	// Integrate
 	double dt = (double)(timestamp - _last_integration) / 1000000.0;
-	math::Vector<3> i = (val + _last_val) * dt * 0.5f;
+	Vector3f i = (val + _last_val) * dt * 0.5f;
 
 	// Apply coning compensation if required
 	if (_coning_comp_on) {
@@ -84,7 +84,7 @@ Integrator::put(uint64_t timestamp, math::Vector<3> &val, math::Vector<3> &integ
 		// Tian et al (2010) Three-loop Integration of GPS and Strapdown INS with Coning and Sculling Compensation
 		// Available: http://www.sage.unsw.edu.au/snap/publications/tian_etal2010b.pdf
 
-		i += ((_integral_auto + _last_delta * (1.0f / 6.0f)) % i) * 0.5f;
+		i += (Vector3f(_integral_auto + _last_delta * (1.0f / 6.0f)).cross(i)) * 0.5f;
 	}
 
 	_integral_auto += i;
@@ -113,10 +113,10 @@ Integrator::put(uint64_t timestamp, math::Vector<3> &val, math::Vector<3> &integ
 	return auto_reset;
 }
 
-math::Vector<3>
+Vector3f
 Integrator::read(bool auto_reset)
 {
-	math::Vector<3> val = _integral_read;
+	Vector3f val = _integral_read;
 
 	if (auto_reset) {
 		_integral_read(0) = 0.0f;

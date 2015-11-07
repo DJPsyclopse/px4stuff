@@ -67,6 +67,8 @@
 #include <drivers/drv_hrt.h>
 
 #include <lib/mathlib/mathlib.h>
+#include <matrix/math.hpp>
+using namespace matrix;
 #include <lib/geo/geo.h>
 
 #include <systemlib/systemlib.h>
@@ -270,17 +272,17 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 	uint64_t last_vel_t = 0;
 
 	/* current velocity */
-	math::Vector<3> vel;
-	vel.zero();
+	Vector3f vel;
+	vel.setZero();
 	/* previous velocity */
-	math::Vector<3> vel_prev;
-	vel_prev.zero();
+	Vector3f vel_prev;
+	vel_prev.setZero();
 	/* actual acceleration (by GPS velocity) in body frame */
-	math::Vector<3> acc;
-	acc.zero();
+	Vector3f acc;
+	acc.setZero();
 	/* rotation matrix */
-	math::Matrix<3, 3> R;
-	R.identity();
+	Dcmf R;
+	R.setIdentity();
 
 	/* subscribe to raw data */
 	int sub_raw = orb_subscribe(ORB_ID(sensor_combined));
@@ -331,8 +333,8 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 	float mag_decl = 0.0f;
 
 	/* rotation matrix for magnetic declination */
-	math::Matrix<3, 3> R_decl;
-	R_decl.identity();
+	Dcmf R_decl;
+	R_decl.setIdentity();
 
 	struct vision_position_estimate_s vision {};
 	struct att_pos_mocap_s mocap {};
@@ -387,7 +389,7 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 						mag_decl = math::radians(get_mag_declination(gps.lat / 1e7f, gps.lon / 1e7f));
 
 						/* update mag declination rotation matrix */
-						R_decl.from_euler(0.0f, 0.0f, mag_decl);
+						R_decl = Dcmf(Eulerf(0.0f, 0.0f, mag_decl));
 					}
 				}
 
@@ -459,7 +461,7 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 							if (last_vel_t != 0 && vel_t != last_vel_t) {
 								float vel_dt = (vel_t - last_vel_t) / 1000000.0f;
 								/* calculate acceleration in body frame */
-								acc = R.transposed() * ((vel - vel_prev) / vel_dt);
+								acc = R.T() * ((vel - vel_prev) / vel_dt);
 							}
 							last_vel_t = vel_t;
 							vel_prev = vel;
@@ -467,8 +469,8 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 
 					} else {
 						/* velocity is valid, reset acceleration */
-						acc.zero();
-						vel_prev.zero();
+						acc.setZero();
+						vel_prev.setZero();
 						last_vel_t = 0;
 					}
 
@@ -503,24 +505,24 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 
 					if (mocap.timestamp_boot > 0 && (hrt_elapsed_time(&mocap.timestamp_boot) < 500000)) {
 
-						math::Quaternion q(mocap.q);
-						math::Matrix<3, 3> Rmoc = q.to_dcm();
+						Quatf q(mocap.q);
+						Dcmf Rmoc(q);
 
-						math::Vector<3> v(1.0f, 0.0f, 0.4f);
+						Vector3f v(1.0f, 0.0f, 0.4f);
 
-						math::Vector<3> vn = Rmoc.transposed() * v; //Rmoc is Rwr (robot respect to world) while v is respect to world. Hence Rmoc must be transposed having (Rwr)' * Vw
+						Vector3f vn = Rmoc.T() * v; //Rmoc is Rwr (robot respect to world) while v is respect to world. Hence Rmoc must be transposed having (Rwr)' * Vw
 											    // Rrw * Vw = vn. This way we have consistency
 						z_k[6] = vn(0);
 						z_k[7] = vn(1);
 						z_k[8] = vn(2);
 					}else if (vision.timestamp_boot > 0 && (hrt_elapsed_time(&vision.timestamp_boot) < 500000)) {
 
-						math::Quaternion q(vision.q);
-						math::Matrix<3, 3> Rvis = q.to_dcm();
+						Quatf q(vision.q);
+						Dcmf = Dcmf(q);
 
-						math::Vector<3> v(1.0f, 0.0f, 0.4f);
+						Vector3f v(1.0f, 0.0f, 0.4f);
 
-						math::Vector<3> vn = Rvis.transposed() * v; //Rvis is Rwr (robot respect to world) while v is respect to world. Hence Rvis must be transposed having (Rwr)' * Vw
+						Vector3f vn = Rvis.T() * v; //Rvis is Rwr (robot respect to world) while v is respect to world. Hence Rvis must be transposed having (Rwr)' * Vw
 											    // Rrw * Vw = vn. This way we have consistency
 						z_k[6] = vn(0);
 						z_k[7] = vn(1);
@@ -627,10 +629,9 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 
 					/* magnetic declination */
 
-					math::Matrix<3, 3> R_body = (&Rot_matrix[0]);
+					Dcmf R_body = (&Rot_matrix[0]);
 					R = R_decl * R_body;
-					math::Quaternion q;
-					q.from_dcm(R);
+					Quatf q(R);
 					/* copy rotation matrix */
 					memcpy(&att.R[0], &R.data[0][0], sizeof(att.R));
 					memcpy(&att.q[0],&q.data[0],sizeof(att.q));
