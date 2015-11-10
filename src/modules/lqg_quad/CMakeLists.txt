@@ -30,19 +30,25 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
+if(${OS} STREQUAL "nuttx")
+	list(APPEND MODULE_CFLAGS -Wframe-larger-than=6500)
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Weffc++")
+
+# use custom matrix lib instead of Eigen
+add_definitions(-DUSE_MATRIX_LIB)
+
+
 px4_add_module(
-	MODULE modules__controllib
-	MAIN controllib_test
-	COMPILE_FLAGS
-		-Os
+	MODULE modules__lqg_quad
+	MAIN lqg_quad
+	STACK 9216
+	COMPILE_FLAGS ${MODULE_CFLAGS}
 	SRCS
-		controllib_test_main.cpp
-		test_params.c
-		block/Block.cpp
-		block/BlockParam.cpp
-		estimators/BlockAttPosEst.cpp
-		uorb/blocks.cpp
-		blocks.cpp
+		lqg_quad_main.cpp
+		BlockEst.cpp
+		params.c
 	DEPENDS
 		platforms__common
 	)
