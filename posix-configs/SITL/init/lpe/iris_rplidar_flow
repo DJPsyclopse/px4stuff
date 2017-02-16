@@ -50,6 +50,7 @@ param set MC_ROLLRATE_P 0.2
 param set MC_PITCHRATE_P 0.2
 param set MC_ROLLRATE_I 0.05
 param set MC_PITCHRATE_I 0.05
+param set MPC_ALT_MODE 1
 param set LPE_T_MAX_GRADE 0
 param set MPC_XY_VEL_MAX 2
 param set MPC_Z_VEL_MAX 2
@@ -65,8 +66,8 @@ param set ATT_EXT_HDG_M 1
 # Ignore invalid Z estimate from lidar odometry
 param set LPE_VIS_Z 10000
 param set LPE_VIS_XY 0.1
-# No GPS, no Flow
-param set LPE_FUSION 148
+# No GPS
+param set LPE_FUSION 246
 
 replay tryapplyparams
 simulator start -s
