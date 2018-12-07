@@ -9,11 +9,23 @@ sh /etc/init.d-posix/10016_iris
 
 if [ $AUTOCNF = yes ]
 then
-	param set EKF2_AID_MASK 24
+	# EKF2: Vision position and heading + Optical Flow
+	param set EKF2_AID_MASK 26
 	param set EKF2_EV_DELAY 5
-	param set EKF2_EVP_NOISE 0.05
-	param set EKF2_EVA_NOISE 0.05
 
-	param set MPC_ALT_MODE 2
+	# EKF2: height mode set to range sensor
+	param set EKF2_HGT_MODE 2
+
+	# Control height relative to ground
+	#param set MPC_ALT_MODE 2
+
+	# LPE: Vision + OF + baro
+	param set LPE_FUSION 134
+
+	# AEQ: External heading set to use vision input
+	param set ATT_EXT_HDG_M 1
+
+	param set MPC_XY_CRUISE 1
+	param set MPC_HOLD_MAX_XY 1
+	param set MIS_TAKEOFF_ALT 1.5
 fi
-
